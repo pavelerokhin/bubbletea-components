@@ -1,0 +1,19 @@
+taxonomy:
+  - category1:
+      - subcaterory1:
+          - A
+          - B
+          - C
+      - subcaterory2:
+          - D
+          - E
+          - F
+  - category2:
+      - subcaterory3:
+          - G
+          - H
+      - subcaterory4:
+          - I
+          - G
+      - subcaterory5:
+          - K
