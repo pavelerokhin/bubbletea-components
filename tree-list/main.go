@@ -20,7 +20,8 @@ var (
 	helpStyle         = list.DefaultStyles().HelpStyle.PaddingLeft(4).PaddingBottom(1)
 	quitTextStyle     = lipgloss.NewStyle().Margin(1, 0, 2, 4)
 
-	selected = make(map[int]int)
+	selected  = make(map[int]int)
+	ancestors = make(map[int]int)
 )
 
 type item struct {
@@ -55,7 +56,12 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 		}
 	}
 
-	str := fmt.Sprintf("%d. [%s] %s", index+1, selectionSign, i.Title)
+	listItemStr := ""
+	if val := ancestors[i.ID]; val > 0 {
+		listItemStr = fmt.Sprintf("%d. [%s] %s (%d items)", index+1, selectionSign, i.Title, val)
+	} else {
+		listItemStr = fmt.Sprintf("%d. [%s] %s", index+1, selectionSign, i.Title)
+	}
 
 	fn := itemStyle.Render
 	if index == m.Index() {
@@ -64,7 +70,7 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 		}
 	}
 
-	fmt.Fprintf(w, fn(str))
+	fmt.Fprintf(w, fn(listItemStr))
 }
 
 type model struct {
@@ -101,13 +107,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "enter":
 			i, ok := m.lists[m.level].SelectedItem().(item)
 			if ok {
-				var ancestors []list.Item
+				var anc []item
 				for _, a := range i.Ancestors {
-					ancestors = append(ancestors, a)
+					anc = append(anc, a)
 				}
-				if len(ancestors) > 0 {
+				if len(anc) > 0 {
 					m.level++
-					m.lists = append(m.lists, constructList(ancestors, m.level))
+					m.lists = append(m.lists, constructList(anc, m.level))
 				}
 			}
 			return m, nil
@@ -140,8 +146,13 @@ func (m model) View() string {
 
 const defaultWidth = 30
 
-func constructList(taxonomy []list.Item, level int) list.Model {
-	l := list.New(taxonomy, itemDelegate{}, defaultWidth, listHeight)
+func constructList(taxonomy []item, level int) list.Model {
+	var castedTaxonomy []list.Item
+	for _, t := range taxonomy {
+		castedTaxonomy = append(castedTaxonomy, t)
+	}
+
+	l := list.New(castedTaxonomy, itemDelegate{}, defaultWidth, listHeight)
 	l.SetShowStatusBar(false)
 	l.SetFilteringEnabled(false)
 	l.SetFilteringEnabled(false)
@@ -158,11 +169,10 @@ func constructList(taxonomy []list.Item, level int) list.Model {
 }
 
 func main() {
-	taxonomy := []list.Item{
+	taxonomy := []item{
 		item{
 			Ancestors: []item{
 				{
-					ID: 1,
 					Ancestors: []item{
 						{
 							ID:        5,
@@ -175,28 +185,31 @@ func main() {
 							Title:     "y",
 						},
 					},
+					ID:    1,
 					Title: "A",
 				},
 				{
-					ID:        2,
 					Ancestors: nil,
+					ID:        2,
 					Title:     "B",
 				},
 				{
-					ID:        3,
 					Ancestors: nil,
+					ID:        3,
 					Title:     "C",
 				},
 			},
+			ID:    0,
 			Title: "category 1",
 		},
 		item{
-			ID:        4,
 			Ancestors: nil,
+			ID:        4,
 			Title:     "category 2",
 		},
 	}
 
+	setAncestors(taxonomy)
 	l := constructList(taxonomy, 0)
 	m := model{lists: []list.Model{l}}
 
@@ -250,5 +263,12 @@ func selectItemAndAncestors(i *item) {
 	// select ancestors
 	for _, a := range i.Ancestors {
 		selectItemAndAncestors(&a)
+	}
+}
+
+func setAncestors(taxonomy []item) {
+	for _, i := range taxonomy {
+		ancestors[i.ID] = len(i.Ancestors)
+		setAncestors(i.Ancestors)
 	}
 }
