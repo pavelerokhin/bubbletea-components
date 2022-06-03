@@ -19,16 +19,17 @@ var (
 	paginationStyle   = list.DefaultStyles().PaginationStyle.PaddingLeft(4)
 	helpStyle         = list.DefaultStyles().HelpStyle.PaddingLeft(4).PaddingBottom(1)
 	quitTextStyle     = lipgloss.NewStyle().Margin(1, 0, 2, 4)
+
+	selected = make(map[int]int)
 )
 
 type item struct {
+	ID        int
 	Ancestors []item
 	Title     string
-	Selected  bool
 }
 
 func (i item) FilterValue() string { return i.Title }
-func (i item) Convert() list.Item  { return i }
 
 type itemDelegate struct{}
 
@@ -44,7 +45,17 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 		return
 	}
 
-	str := fmt.Sprintf("%d. %s", index+1, i.Title)
+	selectionSign := " "
+
+	if val, exist := selected[i.ID]; exist {
+		if val == 1 {
+			selectionSign = "-"
+		} else {
+			selectionSign = "+"
+		}
+	}
+
+	str := fmt.Sprintf("%d. [%s] %s", index+1, selectionSign, i.Title)
 
 	fn := itemStyle.Render
 	if index == m.Index() {
@@ -57,10 +68,8 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 }
 
 type model struct {
-	taxonomy list.Model
-	level    int
-	lists    []list.Model
-	choice   item
+	level int
+	lists []list.Model
 }
 
 func (m model) Init() tea.Cmd {
@@ -70,11 +79,9 @@ func (m model) Init() tea.Cmd {
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		detailLevel := len(m.lists)
 		for _, l := range m.lists {
-			l.SetWidth(msg.Width / detailLevel)
+			l.SetWidth(msg.Width)
 		}
-
 		return m, nil
 
 	case tea.KeyMsg:
@@ -82,24 +89,35 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+c":
 			return m, tea.Quit
 
+		case " ":
+			// select in taxonomy
+			i, ok := m.lists[m.level].SelectedItem().(item)
+			if ok {
+				toggleItemAndAncestors(&i)
+				m.controlTaxonomy()
+			}
+			return m, nil
+
 		case "enter":
 			i, ok := m.lists[m.level].SelectedItem().(item)
 			if ok {
 				var ancestors []list.Item
 				for _, a := range i.Ancestors {
-					ancestors = append(ancestors, a.Convert())
+					ancestors = append(ancestors, a)
 				}
-				m.lists = append(m.lists, constructList(ancestors))
-				m.level++
+				if len(ancestors) > 0 {
+					m.level++
+					m.lists = append(m.lists, constructList(ancestors, m.level))
+				}
 			}
 			return m, nil
 
-			//case "backspace":
-			//	i, ok := m.list.SelectedItem().(item)
-			//	if ok {
-			//		lists = append(lists, constructList(i.Ancestors.(list.Item)))
-			//	}
-			//	return m, nil
+		case "backspace":
+			if m.level > 0 {
+				m.lists = m.lists[:m.level]
+				m.level--
+			}
+			return m, nil
 		}
 	}
 
@@ -110,21 +128,29 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m model) View() string {
 	out := ""
-	for _, l := range m.lists {
-		out = lipgloss.JoinHorizontal(lipgloss.Left, out, "\n"+l.View())
+	for i, l := range m.lists {
+		if i == 0 {
+			out = lipgloss.JoinHorizontal(lipgloss.Left, out, l.View())
+		} else {
+			out = lipgloss.JoinHorizontal(lipgloss.Left, out, l.View(), "    ")
+		}
 	}
 	return out
-	//return "\n" + m.list.View()
 }
 
-const defaultWidth = 20
+const defaultWidth = 30
 
-func constructList(taxonomy []list.Item) list.Model {
+func constructList(taxonomy []list.Item, level int) list.Model {
 	l := list.New(taxonomy, itemDelegate{}, defaultWidth, listHeight)
-	l.Title = ""
 	l.SetShowStatusBar(false)
 	l.SetFilteringEnabled(false)
-	l.Styles.Title = titleStyle
+	l.SetFilteringEnabled(false)
+	l.SetShowTitle(false)
+
+	if level != 0 {
+		l.SetShowHelp(false)
+	}
+
 	l.Styles.PaginationStyle = paginationStyle
 	l.Styles.HelpStyle = helpStyle
 
@@ -136,14 +162,28 @@ func main() {
 		item{
 			Ancestors: []item{
 				{
-					Ancestors: nil,
-					Title:     "A",
+					ID: 1,
+					Ancestors: []item{
+						{
+							ID:        5,
+							Ancestors: nil,
+							Title:     "x",
+						},
+						{
+							ID:        6,
+							Ancestors: nil,
+							Title:     "y",
+						},
+					},
+					Title: "A",
 				},
 				{
+					ID:        2,
 					Ancestors: nil,
 					Title:     "B",
 				},
 				{
+					ID:        3,
 					Ancestors: nil,
 					Title:     "C",
 				},
@@ -151,17 +191,64 @@ func main() {
 			Title: "category 1",
 		},
 		item{
+			ID:        4,
 			Ancestors: nil,
 			Title:     "category 2",
 		},
 	}
 
-	l := constructList(taxonomy)
-
-	m := model{taxonomy: l, lists: []list.Model{l}}
+	l := constructList(taxonomy, 0)
+	m := model{lists: []list.Model{l}}
 
 	if err := tea.NewProgram(m).Start(); err != nil {
 		fmt.Println("Error running program:", err)
 		os.Exit(1)
+	}
+}
+
+// check if not all the elements of sub-levels of the taxonomy are selected
+func (m *model) controlTaxonomy() {
+	for j := len(m.lists) - 1; j >= 0; j-- {
+		l := m.lists[j]
+		for _, i := range l.Items() {
+			it := i.(item)
+			if len(it.Ancestors) > 0 {
+				sum := 0
+				for _, a := range it.Ancestors {
+					sum += selected[a.ID]
+				}
+				if sum == 0 {
+					delete(selected, it.ID)
+				} else if sum < len(it.Ancestors)*2 {
+					selected[it.ID] = 1
+				} else {
+					selected[it.ID] = 2
+				}
+			}
+		}
+	}
+}
+
+func toggleItemAndAncestors(i *item) {
+	if _, exist := selected[i.ID]; exist {
+		deleteItemAndAncestors(i)
+	} else {
+		selectItemAndAncestors(i)
+	}
+}
+
+func deleteItemAndAncestors(i *item) {
+	delete(selected, i.ID)
+	// delete ancestors
+	for _, a := range i.Ancestors {
+		deleteItemAndAncestors(&a)
+	}
+}
+
+func selectItemAndAncestors(i *item) {
+	selected[i.ID] = 2
+	// select ancestors
+	for _, a := range i.Ancestors {
+		selectItemAndAncestors(&a)
 	}
 }

@@ -1,19 +1,26 @@
-taxonomy:
-  - category1:
-      - subcaterory1:
-          - A
-          - B
-          - C
-      - subcaterory2:
-          - D
-          - E
-          - F
-  - category2:
-      - subcaterory3:
-          - G
-          - H
-      - subcaterory4:
-          - I
-          - G
-      - subcaterory5:
-          - K
+name: taxonomy
+items:
+  - item:
+      name: category1
+      items:
+        - item:
+            name: A
+        - item:
+            name: B
+        - item:
+            name: C
+        - item:
+            name: D
+  - item:
+      name: category2
+      items:
+        - item:
+            name: E
+            items:
+              - item:
+                  name: xxx
+              - item:
+                  name: yyy
+              - item:
+                  name: zzz
+
