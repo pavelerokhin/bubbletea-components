@@ -77,7 +77,6 @@ func parseRow(code, value string, t *item) {
 			}
 		}
 
-		// TODO: manage case if the element will be found afterwards
 		if !parentHasBeenFound {
 			i1 := item{
 				ID:        level1part,
@@ -149,12 +148,6 @@ func fineByID(id string, t *item) int {
 		}
 	}
 	return -1
-}
-
-func ReadYAML(filename string) {
-	file := readFile(filename)
-	defer file.Close()
-
 }
 
 func readFile(filename string) *os.File {
