@@ -2,13 +2,63 @@ package main
 
 import (
 	"fmt"
-	"io"
-	"os"
-
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"io"
+	"os"
 )
+
+func main1() {
+	taxonomy := []item{
+		{
+			Ancestors: []item{
+				{
+					Ancestors: []item{
+						{
+							ID:        "5",
+							Ancestors: nil,
+							Title:     "x",
+						},
+						{
+							ID:        "6",
+							Ancestors: nil,
+							Title:     "y",
+						},
+					},
+					ID:    "1",
+					Title: "A",
+				},
+				{
+					Ancestors: nil,
+					ID:        "2",
+					Title:     "B",
+				},
+				{
+					Ancestors: nil,
+					ID:        "3",
+					Title:     "C",
+				},
+			},
+			ID:    "0",
+			Title: "category 1",
+		},
+		{
+			Ancestors: nil,
+			ID:        "4",
+			Title:     "category 2",
+		},
+	}
+
+	setAncestors(taxonomy)
+	l := constructList(taxonomy, 0)
+	m := model{lists: []list.Model{l}}
+
+	if err := tea.NewProgram(m).Start(); err != nil {
+		fmt.Println("Error running program:", err)
+		os.Exit(1)
+	}
+}
 
 const listHeight = 14
 
@@ -18,12 +68,12 @@ var (
 	paginationStyle   = list.DefaultStyles().PaginationStyle.PaddingLeft(4)
 	helpStyle         = list.DefaultStyles().HelpStyle.PaddingLeft(4).PaddingBottom(1)
 
-	selected  = make(map[int]int)
-	ancestors = make(map[int]int)
+	selected  = make(map[string]int)
+	ancestors = make(map[string]int)
 )
 
 type item struct {
-	ID        int
+	ID        string
 	Ancestors []item
 	Title     string
 }
@@ -164,57 +214,6 @@ func constructList(taxonomy []item, level int) list.Model {
 	l.Styles.HelpStyle = helpStyle
 
 	return l
-}
-
-func main() {
-	taxonomy := []item{
-		item{
-			Ancestors: []item{
-				{
-					Ancestors: []item{
-						{
-							ID:        5,
-							Ancestors: nil,
-							Title:     "x",
-						},
-						{
-							ID:        6,
-							Ancestors: nil,
-							Title:     "y",
-						},
-					},
-					ID:    1,
-					Title: "A",
-				},
-				{
-					Ancestors: nil,
-					ID:        2,
-					Title:     "B",
-				},
-				{
-					Ancestors: nil,
-					ID:        3,
-					Title:     "C",
-				},
-			},
-			ID:    0,
-			Title: "category 1",
-		},
-		item{
-			Ancestors: nil,
-			ID:        4,
-			Title:     "category 2",
-		},
-	}
-
-	setAncestors(taxonomy)
-	l := constructList(taxonomy, 0)
-	m := model{lists: []list.Model{l}}
-
-	if err := tea.NewProgram(m).Start(); err != nil {
-		fmt.Println("Error running program:", err)
-		os.Exit(1)
-	}
 }
 
 // check if not all the elements of sub-levels of the taxonomy are selected
