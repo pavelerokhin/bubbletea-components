@@ -18,18 +18,7 @@ var (
 	r3 = regexp.MustCompile(level3regex)
 )
 
-type taxonomy struct {
-	Ancestors []item
-}
-
-func main() {
-	filename := "/Users/pavelerokhin/UC/bubbletea-components/tree-list/exop_categories.csv"
-	t := ReadCSV(filename)
-
-	fmt.Println(t)
-}
-
-func ReadCSV(filename string) *taxonomy {
+func ReadCSV(filename string) *item {
 	file := readFile(filename)
 	defer file.Close()
 
@@ -39,7 +28,7 @@ func ReadCSV(filename string) *taxonomy {
 		return nil
 	}
 
-	var t taxonomy
+	var t item
 
 	for _, line := range csvLines {
 		code := line[0]
@@ -51,7 +40,7 @@ func ReadCSV(filename string) *taxonomy {
 	return &t
 }
 
-func parseRow(code, value string, t *taxonomy) {
+func parseRow(code, value string, t *item) {
 	if r1.MatchString(code) {
 		if j := fineByID(code, t); j == -1 {
 			t.Ancestors = append(t.Ancestors, item{
@@ -88,7 +77,6 @@ func parseRow(code, value string, t *taxonomy) {
 			}
 		}
 
-		// TODO: manage case if the element will be found afterwards
 		if !parentHasBeenFound {
 			i1 := item{
 				ID:        level1part,
@@ -153,19 +141,13 @@ func parseRow(code, value string, t *taxonomy) {
 	}
 }
 
-func fineByID(id string, t *taxonomy) int {
+func fineByID(id string, t *item) int {
 	for j, i := range t.Ancestors {
 		if i.ID == id {
 			return j
 		}
 	}
 	return -1
-}
-
-func ReadYAML(filename string) {
-	file := readFile(filename)
-	defer file.Close()
-
 }
 
 func readFile(filename string) *os.File {

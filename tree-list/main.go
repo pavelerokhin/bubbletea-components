@@ -2,56 +2,20 @@ package main
 
 import (
 	"fmt"
+	"io"
+	"os"
+
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"io"
-	"os"
 )
 
-func main1() {
-	taxonomy := []item{
-		{
-			Ancestors: []item{
-				{
-					Ancestors: []item{
-						{
-							ID:        "5",
-							Ancestors: nil,
-							Title:     "x",
-						},
-						{
-							ID:        "6",
-							Ancestors: nil,
-							Title:     "y",
-						},
-					},
-					ID:    "1",
-					Title: "A",
-				},
-				{
-					Ancestors: nil,
-					ID:        "2",
-					Title:     "B",
-				},
-				{
-					Ancestors: nil,
-					ID:        "3",
-					Title:     "C",
-				},
-			},
-			ID:    "0",
-			Title: "category 1",
-		},
-		{
-			Ancestors: nil,
-			ID:        "4",
-			Title:     "category 2",
-		},
-	}
+func main() {
+	filename := "/Users/pavelerokhin/UC/bubbletea-components/tree-list/exop_categories.csv"
+	t := ReadCSV(filename)
 
-	setAncestors(taxonomy)
-	l := constructList(taxonomy, 0)
+	setAncestors(t)
+	l := constructList(t.Ancestors, 0)
 	m := model{lists: []list.Model{l}}
 
 	if err := tea.NewProgram(m).Start(); err != nil {
@@ -263,9 +227,9 @@ func selectItemAndAncestors(i *item) {
 	}
 }
 
-func setAncestors(taxonomy []item) {
-	for _, i := range taxonomy {
+func setAncestors(t *item) {
+	for _, i := range t.Ancestors {
 		ancestors[i.ID] = len(i.Ancestors)
-		setAncestors(i.Ancestors)
+		setAncestors(&i)
 	}
 }
