@@ -13,7 +13,7 @@ import (
 func main() {
 	filename := "/Users/pavelerokhin/UC/bubbletea-components/tree-list/exop_categories.csv"
 	t := ReadCSV(filename)
-
+	WriteJSON(t)
 	setAncestors(t)
 	l := constructList(t.Ancestors, 0)
 	m := model{lists: []list.Model{l}}
