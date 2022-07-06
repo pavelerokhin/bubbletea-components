@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/csv"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -159,4 +160,24 @@ func readFile(filename string) *os.File {
 	}
 
 	return file
+}
+
+func WriteJSON(t *item) {
+	b, err := json.Marshal(t)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	f, err := os.Create("taxonomy.txt")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer f.Close()
+
+	_, err2 := f.WriteString(string(b))
+
+	if err2 != nil {
+		log.Fatal(err2)
+	}
 }
